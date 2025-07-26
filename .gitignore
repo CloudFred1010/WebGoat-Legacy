@@ -38,3 +38,33 @@ bom.json
 bom.xml
 hdb
 hdb
+WebGoat-6.0.1-war-exec.jar
+WebGoat-6.0.1.war
+
+# Build artifacts
+/target/
+*.class
+*.log
+*.tmp
+*.bak
+
+# Executable and deployable archives
+WebGoat-6.0.1-war-exec.jar
+WebGoat-6.0.1.war
+
+# SBOM files
+bom.xml
+bom.json
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+
+# OS-specific junk
+.DS_Store
+Thumbs.db
+
+# Misc
+hdb
+
