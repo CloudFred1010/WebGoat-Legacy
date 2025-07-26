@@ -93,3 +93,8 @@ target/
 # Misc system and temp files
 .DS_Store
 Thumbs.db
+
+# Nexus runtime and extracted directories
+nexus/
+nexus-3.82.0-08/
+sonatype-work/
