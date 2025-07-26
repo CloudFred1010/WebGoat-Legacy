@@ -16,6 +16,16 @@
         <build.number>local</build.number>
     </properties>
 
+<distributionManagement>
+  <repository>
+    <id>nexus</id>
+    <name>WebGoat Internal Releases</name>
+    <url>http://localhost:8081/repository/webgoat-releases/</url>
+  </repository>
+</distributionManagement>
+
+
+
     <build>
         <resources>
             <resource>
