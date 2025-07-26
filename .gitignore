@@ -70,3 +70,5 @@ hdb
 
 .extract/
 UserDatabase.mv.db
+bom.xml
+bom.json
