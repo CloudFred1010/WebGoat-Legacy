@@ -68,3 +68,5 @@ Thumbs.db
 # Misc
 hdb
 
+.extract/
+UserDatabase.mv.db
