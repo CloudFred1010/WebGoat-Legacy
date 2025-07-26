@@ -25,3 +25,15 @@ src/main/main.iml
 *.REMOTE.*.jsp
 *.iml
 
+/target/
+/*.log
+*.class
+.vscode/
+.idea/
+.DS_Store
+*.swp
+*.tmp
+*.bak
+bom.json
+bom.xml
+hdb
