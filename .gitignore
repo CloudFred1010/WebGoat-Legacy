@@ -72,3 +72,24 @@ hdb
 UserDatabase.mv.db
 bom.xml
 bom.json
+
+# Ignore Nexus and IQ Server tarballs and directories
+nexus/
+nexus.tar.gz
+iq-server/
+iq-server-bundle.zip
+iq-cli.jar
+
+# Optional: general Java/Maven build files
+target/
+*.log
+*.class
+
+# Ignore IDE/editor files
+.idea/
+.vscode/
+*.iml
+
+# Misc system and temp files
+.DS_Store
+Thumbs.db
