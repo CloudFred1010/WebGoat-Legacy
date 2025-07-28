@@ -384,151 +384,152 @@ Enterprise benefits:
 ## Objective  
 The goal of this validation step was to confirm that the Docker image of the WebGoat application, previously published to the internal Nexus Docker registry (docker-webgoat), can be successfully pulled and executed by downstream systems or team members. This simulates real-world consumption by developers, testers, or CI/CD agents, and ensures that the internal image repository is functioning correctly for secure software delivery.
 
-## Execution Steps
+## Step 1: Pulling the Image from Nexus  
+With authentication already configured and confirmed during the image publishing phase, I initiated a Docker image pull using the fully qualified image path and tag from the internal registry. The image was retrieved successfully, and the Docker client verified its integrity by displaying the digest and confirming that the latest version of the image was downloaded.  
+This proved that the Nexus Docker registry is fully accessible and capable of serving tagged container images on demand.
 
-### 1. Pulling the Image from Nexus  
-```bash
-docker pull localhost:8082/webgoat/webgoat:6.0.1
-```
-
-Verification:  
-- Image digest matched published version  
-- All layers successfully downloaded  
-- Nexus access logs confirmed proper authentication  
-
-### 2. Running the Pulled Image Locally  
-```bash
-docker run -d -p 8080:8080 localhost:8082/webgoat/webgoat:6.0.1
-```
-
-Validation checks:  
-1. Container started without errors  
-2. Accessed `http://localhost:8080/WebGoat`  
-3. Confirmed:  
-   - Login page rendered  
-   - All lessons functional  
-   - No runtime warnings  
+## Step 2: Running the Pulled Image Locally  
+To test the runtime behaviour of the image, I launched a container using the pulled image and mapped the internal port to my local machine. Once the container started, I opened a browser and navigated to the expected application URL.  
+The WebGoat interface loaded successfully, and all core application features were accessible. This confirmed that the image functions as expected when pulled from the registry, and that no configuration or dependency issues were introduced during the publishing process.
 
 ## Outcome  
-Validation confirmed:  
-- ✔ Nexus registry properly serves container images  
-- ✔ Version 6.0.1 maintains integrity when pulled  
-- ✔ Image runs identically to local builds  
+This pull validation exercise confirmed that:  
+• The Nexus Docker registry is hosting the WebGoat image securely and correctly.  
+• The image is properly tagged and versioned (6.0.1), making it suitable for controlled distribution.  
+• The image can be consumed seamlessly by internal developers, automated build agents, or test environments.
 
-Enterprise readiness:  
-- Supports developer workflows  
-- Compatible with CI/CD pipelines  
-- Enforces version control in deployments  
-```
 
-![alt text](image-12.png)
+![alt text](image-25.png)
 
-```markdown
 # Phase 6: Nexus IQ Server Security Scan
 
-## Objective  
-To perform a complete security and license policy evaluation of WebGoat using Sonatype IQ Server, including:
-- Scanning locally built `.war` artifact  
-- Mapping to manually registered application ID  
-- Resolving environment/CLI issues  
-- Reviewing final security report  
+## Objective
+The aim of this phase was to perform a complete security and license policy evaluation of the WebGoat application using Sonatype IQ Server and the IQ CLI tool. The plan was to scan a .war artifact built locally during the build stage and map it to a manually registered application ID in the IQ Server. This required preparing the environment, installing and configuring the IQ Server, resolving CLI-related issues, and reviewing the final security report.
 
-## Execution Steps
+## Initial Setup and Java Compatibility
+My system was initially running Java 8 (OpenJDK 1.8), but when I tried to start the IQ Server, it failed with a UnsupportedClassVersionError. The error message clearly indicated that the server had been compiled with a newer Java version (class file version 61.0), which corresponds to Java 17. Since Java 8 only supports up to version 52.0, the IQ Server couldn't run.
 
-### 1. Initial Setup and Java Compatibility  
-**Issue**:  
-```bash
-UnsupportedClassVersionError: class file version 61.0 (requires Java 17)
-```
-**Solution**:  
-```bash
-# Install Java 17
-sudo apt install openjdk-17-jdk
+To fix this, I installed Java 17 and configured my system to support both Java 8 and 17 side by side. I updated my .bashrc file with environment variables and aliases to switch easily between versions. After sourcing the file and activating Java 17, I verified it was working correctly by checking the version — this confirmed the server would now be compatible with the runtime environment.
 
-# Configure environment
-export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
-export PATH=$JAVA_HOME/bin:$PATH
+## IQ Server Installation and Configuration
+I downloaded and extracted the nexus-iq-server-1.193.0-01 bundle. To launch the server, I had to include additional JVM flags to open up certain internal Java modules required for the IQ Server to run on Java 17. Once started, the server became available at localhost:8070.
 
-# Verification
-java -version  # Should show Java 17
-```
+I logged in using the default admin credentials and uploaded the license file. Within the UI, I created a new application entry under the Sandbox organization. I named it WebGoat, assigned it an Application ID of webgoat-app, and chose "Internal" as the category. This ID was important because the CLI scan references it to associate results with this application.
 
-### 2. IQ Server Installation  
-```bash
-# Extract and launch with Java 17
-tar -xzf nexus-iq-server-1.193.0-01-bundle.tar.gz
-./nexus-iq-server-1.193.0-01/bin/nexus-iq-server start
+## CLI Tool Issue and Workaround
+The CLI scanner (iq-cli.jar) wasn't included in the IQ Server bundle, which I originally expected it to be. I tried downloading the latest CLI from the public Sonatype URL, but the link returned a 404 error.
 
-# Access UI at:
-http://localhost:8070
-```
-**Configuration**:  
-- Uploaded license file  
-- Created application:  
-  - Name: `WebGoat`  
-  - ID: `webgoat-app`  
-  - Category: `Internal`  
+To work around this, I found and downloaded version 1.160.0-01 of the CLI directly from Sonatype's archive. This version was fully compatible with the server version I had installed and contained all the features I needed to proceed with the scan.
 
-### 3. CLI Tool Resolution  
-**Workaround**:  
-```bash
-wget https://download.sonatype.com/clm/scanner/iq-cli-1.160.0-01.jar
-mv iq-cli-1.160.0-01.jar iq-cli.jar
-```
+## Building the WebGoat Artifact
+Before running the scan, I needed a .war file for the WebGoat application. I used Maven to build the project, skipping tests to speed up the process. This produced the required artifact: WebGoat-6.0.1.war, located in the target directory.
 
-### 4. Building WebGoat Artifact  
-```bash
-mvn clean package -DskipTests
-# Generated: target/WebGoat-6.0.1.war
-```
+## Running the IQ CLI Scan
+With the server up and the CLI tool ready, I ran the scan against the .war file. I passed the admin credentials, the server URL, the application ID (webgoat-app), and set the stage to build.
 
-### 5. Running Security Scan  
-```bash
-java -jar iq-cli.jar \
-  -s http://localhost:8070 \
-  -a admin:admin123 \
-  -i webgoat-app \
-  -t build \
-  target/WebGoat-6.0.1.war
-```
+The CLI tool successfully connected to the IQ Server and authenticated. It also auto-discovered Git metadata like the current commit and repository URL using jGit. In total, 67 components were scanned.
 
-**Scan Results**:  
-| Severity    | Violations | Components Affected |
-|-------------|------------|---------------------|
-| Critical    | 53         | 21                  |
-| Severe      | 70         | 11                  |
-| Moderate    | 8          | 2                   |
+The scan results were as follows:
+- 53 critical policy violations
+- 70 severe policy violations
+- 8 moderate policy violations
 
-### 6. Report Analysis  
-Key findings in IQ Server UI:  
-- Component vulnerability breakdown  
-- License compliance issues  
-- Policy violation details  
-- Risk threshold comparisons  
+These issues affected 21 components critically, 11 severely, and 2 moderately. The CLI output included a link to the full report hosted on the IQ Server UI.
 
-## Conclusion  
-Successfully:  
-✔ Resolved Java 17 compatibility  
-✔ Established IQ Server instance  
-✔ Acquired functional CLI scanner  
-✔ Generated security report  
+## Reviewing the Report
+I accessed the report via the IQ Server dashboard. From there, I captured key screenshots including:
+- A summary of violations broken down by severity
+- A list of all affected components
+- Any license issues found
+- A breakdown of the specific policy rules that were triggered
 
-Next steps:  
-- Document findings  
-- Address critical vulnerabilities  
-- Integrate into CI/CD pipeline  
-```
+I reviewed the results and compared them against our policy thresholds to assess the overall risk level of the WebGoat application.
+
+## Conclusion
+This phase successfully completed the security scanning integration using Sonatype IQ Server. I resolved the Java compatibility issue, sourced and configured the correct CLI tool, built the application, and ran a full policy evaluation against it. The results are now available in a detailed report and are ready to be added to the project's documentation and presentation materials.
 
 
-![alt text](image-19.png)
+![alt text](image-26.png)
 
-![alt text](image-20.png)
+![alt text](image-27.png)
 
-![alt text](image-21.png)
+![alt text](image-28.png)
 
-![alt text](image-22.png)
+![alt text](image-29.png)
 
-![alt text](image-23.png)
+![alt text](image-30.png)
 
-![alt text](image-24.png)
+![alt text](image-31.png)
 
+
+# Phase 6B: Detailed Analysis and Application of IQ Server Capabilities for Remediation
+
+After completing the initial scan of the WebGoat application using Sonatype IQ Server and the CLI, the results revealed a total of 131 active policy violations across 34 out of 67 open-source components. These included 53 critical, 70 severe, and 8 moderate issues. The scan not only highlighted technical risks but also surfaced licensing and compliance concerns that would need to be addressed before any production deployment.
+
+This part of the phase focused on understanding how IQ Server supports remediation — not just identifying problems but giving teams the tools to operationalise fixes and enforce governance across the software lifecycle. Below is a breakdown of the features I explored and applied.
+
+## Real-Time Component Intelligence and SBOM Accuracy
+
+IQ Server generated a full software bill of materials (SBOM) for the WebGoat build. It accurately identified all components, including deeply nested transitive dependencies, and clearly distinguished between direct and indirect usage.
+
+For example, it picked out specific versions like `jackson-databind:2.0.4` and `commons-collections:3.1`, providing over 95% SBOM completeness. This level of detail gave me clarity on where vulnerabilities were coming from and helped me avoid wasting time on irrelevant upgrades.
+
+Unlike some scanners that rely purely on public CVE databases, IQ Server pulls from Sonatype's proprietary research (OSS Index), which I found to be far more reliable and up to date.
+
+## Contextual Policy Evaluation
+
+Rather than just listing CVEs, IQ Server evaluated each component against a default policy set. The policy engine was context-aware — factoring in severity scores, license types, component age, and end-of-life status.
+
+In the WebGoat scan, any component with a known critical vulnerability or non-compliant license was automatically flagged and mapped to a policy action. This allowed me to understand not just what was vulnerable, but why it failed policy and what that meant for enforcement.
+
+It was clear that this system could scale across environments by applying different policies per stage (development, build, release), which gives teams much more control compared to basic scanners.
+
+## Upgrade Guidance and Fix Recommendations
+
+One of the most useful features was the remediation advice. Instead of just pointing out vulnerable packages, IQ Server provided specific version recommendations.
+
+For example, the report flagged `log4j:1.2.17` with multiple critical issues and recommended upgrading to `log4j-core:2.17.2`, a maintained and secure alternative.
+
+This removed guesswork and made it easier to plan safe upgrades that wouldn't break the application or introduce new licensing concerns.
+
+## Policy Staging and Lifecycle Awareness
+
+The scan I performed was mapped to the build stage. This was important because IQ Server uses stage-aware policies, so the same component may be allowed in development but blocked during build or release.
+
+This flexibility made a lot of sense — during development you might allow medium-risk components, but by the time you're releasing, policies should enforce stricter compliance. It showed that the platform can integrate cleanly into DevSecOps pipelines without slowing developers down unnecessarily early on.
+
+## Waivers and Justified Exceptions
+
+IQ Server also supports waivers, which means if a risky component can't be removed immediately — for example, due to legacy integration or lack of alternatives — a structured waiver can be applied.
+
+Waivers in IQ Server require justification and can be time-limited, ensuring visibility and traceability. This means risks are acknowledged, not hidden. In a real-world scenario (e.g. with `axis:1.2` for old SOAP integrations), I would be able to apply a waiver while working on a longer-term solution.
+
+## Continuous Monitoring and Alerts
+
+Although my scan produced a static report on July 20, 2025, IQ Server supports continuous re-evaluation of previously scanned components.
+
+This means that if a new vulnerability is disclosed tomorrow, IQ Server can alert teams and update the policy evaluation automatically — no need to manually re-scan. This capability is critical for long-term risk management in production.
+
+## Pipeline Integration and Enforcement
+
+IQ CLI is designed to be embedded into CI/CD tools like Jenkins, GitHub Actions, or GitLab. This allows you to block builds if a critical vulnerability is introduced, enforce policy on every pull request, and generate audit trails for compliance teams.
+
+For future use, I plan to embed these checks into automated pipelines, particularly for production workloads, to ensure that violations are caught early and remediated before they reach customers.
+
+## Summary of Key Outcomes
+
+• I successfully scanned WebGoat and confirmed 131 actionable policy violations.  
+• Java compatibility was resolved early to ensure the latest server could run securely.  
+• I sourced and used a known working CLI version when the expected one wasn't available.  
+• I reviewed each violation in context — not just as a CVE, but in relation to license risk, usage type, and business impact.  
+• I identified realistic upgrade paths for key components and documented waivable risks for legacy dependencies.  
+• I evaluated how IQ Server enables policy enforcement across the software lifecycle — from development to release.  
+• I confirmed that this setup can scale and integrate into CI/CD, supporting continuous governance and ongoing monitoring.  
+
+## Conclusion
+
+Sonatype IQ Server is far more than a static vulnerability scanner. It provides full-spectrum governance, precise identification, curated remediation guidance, and structured policy enforcement.
+
+In this project, it helped me transition from vulnerability awareness to vulnerability management. I moved from simply identifying open-source risks in WebGoat to planning practical next steps — fixing what could be upgraded, flagging what needed waivers, and understanding how to enforce policies in future builds.
+
+Where most tools stop at detection, IQ Server supports a complete DevSecOps flow — from policy definition, to remediation, to ongoing risk evaluation. That's what made it particularly valuable in this phase of the project.
