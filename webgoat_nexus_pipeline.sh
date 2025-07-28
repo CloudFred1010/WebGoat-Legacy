@@ -140,5 +140,9 @@ if ! docker run -d --rm -p "$PORT:8080" --name "webgoat_$PORT" "$DOCKER_IMAGE_TA
 fi
 wait_step
 
-log_info "✅ Success: Access WebGoat at: http://localhost:$PORT/WebGoat"
-log_info "Container ID: $(docker ps -q --filter ancestor="$DOCKER_IMAGE_TAG")"
+log_info "  ╔════════════════════════════╗"  
+log_info "  ║    😊  SUCCESS!  😊        ║"  
+log_info "  ╚════════════════════════════╝"  
+log_info "  🌐 Access WebGoat: http://localhost:$PORT/WebGoat"  
+log_info "  � ID: $(docker ps -q --filter ancestor="$DOCKER_IMAGE_TAG")"  
+
